@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, Any
+from typing import Optional, Any, List
 from datetime import datetime
 
 class Evidence(BaseModel):
@@ -19,3 +19,15 @@ class Evidence(BaseModel):
     first_seen: datetime
     last_seen: datetime
     is_active: bool = True
+    
+    # ========================================================
+    # Enterprise Hardening: BAS Run Traceability
+    # ========================================================
+    
+    # Track which BAS runs used this evidence
+    bas_run_ids: List[str] = []  # Evidence used by these BAS runs
+    scan_job_id: Optional[str] = None  # Originating scan job
+    snapshot_version: int = 1  # Asset snapshot version when evidence created
+    
+    class Config:
+        arbitrary_types_allowed = True

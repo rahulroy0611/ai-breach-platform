@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from app.models.asset import Asset
 from app.models.attack_chain import AttackChain
 from app.core.evidence_store import get_evidence_by_type
@@ -7,17 +7,48 @@ from app.core.evidence_store import get_evidence_by_type
 def has_evidence(asset_id: str, evidence_type: str) -> bool:
     return len(get_evidence_by_type(asset_id, evidence_type)) > 0
 
-def get_evidence_ids_for_conditions(asset, conditions: list) -> list:
+def get_evidence_objects_for_conditions(asset, conditions: list) -> list:
     """
-    Collect evidence IDs that satisfy evidence-based conditions.
+    Collect evidence objects that satisfy evidence-based conditions.
     """
-    evidence_ids = []
+    evidence_objects = []
     for cond in conditions:
         if isinstance(cond, dict) and cond.get("requires_evidence"):
             evidence_type = cond["requires_evidence"]
             evidence = get_evidence_by_type(asset.asset_id, evidence_type)
-            evidence_ids.extend([e.evidence_id for e in evidence])
-    return evidence_ids
+            evidence_objects.extend(evidence)
+    return evidence_objects
+
+def calculate_confidence_from_evidence(evidence_list) -> Optional[float]:
+    """
+    Calculate confidence score based on evidence strength.
+    Maps: low=0.3, medium=0.6, high=0.9
+    Returns max confidence or None if no evidence provided.
+    """
+    if not evidence_list:
+        return None
+    
+    confidence_map = {
+        "low": 0.3,
+        "medium": 0.6,
+        "high": 0.9
+    }
+    
+    scores = []
+    for evidence in evidence_list:
+        # Evidence.confidence is the field with low/medium/high values
+        conf_level = getattr(evidence, "confidence", "low").lower()
+        scores.append(confidence_map.get(conf_level, 0.3))
+    
+    return max(scores) if scores else None
+
+def get_evidence_ids_for_conditions(asset, conditions: list) -> list:
+    """
+    Collect evidence IDs that satisfy evidence-based conditions.
+    """
+    evidence_objects = get_evidence_objects_for_conditions(asset, conditions)
+    return [e.evidence_id for e in evidence_objects]
+
 
 def asset_matches_conditions(asset, conditions: list) -> tuple[bool, list]:
     """
@@ -56,8 +87,12 @@ def simulate_attack(chain: AttackChain, assets: list[Asset]):
             if success:
                 step.success = True
                 
-                # Collect evidence IDs used to satisfy conditions
-                evidence_ids = get_evidence_ids_for_conditions(asset, step.technique.required_conditions)
+                # Collect evidence objects and IDs used to satisfy conditions
+                evidence_objects = get_evidence_objects_for_conditions(asset, step.technique.required_conditions)
+                evidence_ids = [e.evidence_id for e in evidence_objects]
+                
+                # Calculate confidence based on evidence strength
+                step.confidence = calculate_confidence_from_evidence(evidence_objects)
                 
                 # Build outcome with evidence IDs if available
                 if evidence_ids:
@@ -82,6 +117,7 @@ def simulate_attack(chain: AttackChain, assets: list[Asset]):
             step.failed_conditions = [
                 str(cond) for cond in step.technique.required_conditions
             ]
+            step.confidence = None  # No evidence collected on failure
             results.append(step)
 
     return results

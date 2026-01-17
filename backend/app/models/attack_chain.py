@@ -18,6 +18,7 @@ class AttackStep(BaseModel):
     success: bool = False
     outcome: Optional[str] = None
     failed_conditions: List[str] = Field(default_factory=list)
+    confidence: Optional[float] = None  # Confidence score (0.0-1.0) based on evidence strength
 
     # 🔥 FIX: declare mutation-safe runtime fields
     evidence_used: List[str] = Field(default_factory=list)

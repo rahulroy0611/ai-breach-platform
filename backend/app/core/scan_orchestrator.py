@@ -9,7 +9,7 @@ from app.engines.discovery.domain_discovery import discover_domain
 from app.engines.discovery.ip_discovery import discover_ip
 from app.core.target_classifier import detect_scan_type
 from app.models.scan_type import ScanType
-from app.core.snapshot_store import ASSET_SNAPSHOTS
+from app.core.snapshot_store import ASSET_SNAPSHOTS, store_asset_snapshot, get_asset_snapshots
 from app.models.asset_snapshot import AssetSnapshot
 from app.core.asset_diff import diff_assets
 from app.core.bas_service import run_bas_simulation
@@ -19,6 +19,7 @@ from app.core.asset_normalizer import normalize_assets
 from app.core.asset_deduplicator import deduplicate_assets
 from app.engines.discovery.service_discovery import discover_services
 from app.engines.discovery.http_fingerprinting import fingerprint_http_service
+from app.engines.discovery.ai_evidence_engine import scan_ai_evidence
 from app.core.evidence_store import add_evidence
 from app.models.evidence import Evidence
 from app.engines.discovery.http_fingerprinting import fingerprint_http_service
@@ -142,6 +143,9 @@ def run_scan(job_id: str, target: str):
 
                         for k, v in fp.get("tech_headers", {}).items():
                             svc.risk_tags.append(f"tech:{k}")
+                        
+                        # 🔹 NEW: Scan for AI-specific security indicators
+                        scan_ai_evidence(svc.asset_id, url, timeout=5.0)
 
 
         # 🔹 Normalize & deduplicate assets
@@ -159,16 +163,19 @@ def run_scan(job_id: str, target: str):
         snapshot = AssetSnapshot(
             snapshot_id=str(uuid4()),
             target=target,
-            assets=enriched
+            assets=enriched,
+            scan_job_id=job.job_id
         )
 
-        ASSET_SNAPSHOTS.setdefault(target, []).append(snapshot)
+        # Store immutable snapshot with versioning
+        store_asset_snapshot(snapshot, job_id=job.job_id)
 
         logger.info(
-            f"Snapshot saved | target={target} total_snapshots={len(ASSET_SNAPSHOTS[target])}"
+            f"Snapshot saved | target={target} version={snapshot.snapshot_version} "
+            f"immutable={snapshot.is_immutable} hash={snapshot.hash[:16]}..."
         )
 
-        snapshots = ASSET_SNAPSHOTS[target]
+        snapshots = get_asset_snapshots(target)
         if len(snapshots) >= 2:
             prev = snapshots[-2].assets
             curr = snapshots[-1].assets
@@ -184,8 +191,10 @@ def run_scan(job_id: str, target: str):
             if diff["added"]:
                 logger.info("New attack surface detected — triggering BAS")
                 run_bas_simulation(
-                    chain_path="attack_chains/external_to_internal.yaml",
-                    assets=curr
+                    chain_name="external_to_internal.yaml",
+                    assets=curr,
+                    job_id=job.job_id,
+                    snapshot_id=snapshot.snapshot_id
                 )
 
     except Exception as e:
