@@ -1,0 +1,13 @@
+chain_id: simple_external_attack
+name: Simple External Attack
+steps:
+  - step_id: step_1
+    technique:
+      technique_id: EXT-001
+      name: Public Internet Exposure
+      stage: initial_access
+      required_conditions:
+        - internet_exposed
+      success_effects:
+        - initial_access
+    target_asset_type: ip

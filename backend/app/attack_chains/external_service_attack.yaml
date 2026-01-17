@@ -1,0 +1,26 @@
+chain_id: external_service_attack
+name: External Service-Based Attack
+description: Attacks based on exposed services
+
+steps:
+  - step_id: initial_access_http
+    technique:
+      technique_id: EXT-SVC-HTTP
+      name: Web Service Exposure
+      stage: initial_access
+      required_conditions:
+        - asset_type: service
+        - requires_evidence: http_service_detected
+      success_effects:
+        - foothold
+
+  - step_id: initial_access_rdp
+    technique:
+      technique_id: EXT-SVC-RDP
+      name: Remote Desktop Exposure
+      stage: initial_access
+      required_conditions:
+        - asset_type: service
+        - requires_evidence: rdp_service_detected
+      success_effects:
+        - foothold
