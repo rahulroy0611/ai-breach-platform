@@ -5,24 +5,28 @@ ALLOWED_ASSET_TYPES = {
 }
 
 def validate_attack_chain(data: dict):
-    if "steps" not in data or not data["steps"]:
-        if not step["technique"]["required_conditions"]:
-            raise ValueError("Service-level BAS step must require evidence")
+    if "steps" not in data:
+        raise ValueError("Attack chain must define steps")
 
     for step in data["steps"]:
-        tech = step.get("technique", {})
+        if "step_id" not in step:
+            raise ValueError("Each step must have step_id")
 
-        if "name" not in tech:
-            raise ValueError("Technique must have a name")
+        if "technique" not in step:
+            raise ValueError(f"Step {step.get('step_id')} missing technique")
 
-        if "stage" not in tech:
-            raise ValueError("Technique must have a stage")
+        tech = step["technique"]
 
-        if step["target_asset_type"] not in ALLOWED_ASSET_TYPES:
-            raise ValueError(f"Invalid asset type: {step['target_asset_type']}")
+        required_fields = [
+            "technique_id",
+            "name",
+            "stage",
+            "required_conditions",
+            "success_effects",
+        ]
 
-        if tech["stage"] not in [s.value for s in AttackStage]:
-            raise ValueError(f"Invalid attack stage: {tech['stage']}")
-
-        if not tech.get("required_conditions"):
-            raise ValueError("required_conditions cannot be empty")
+        for field in required_fields:
+            if field not in tech:
+                raise ValueError(
+                    f"Technique {tech.get('name')} missing field: {field}"
+                )

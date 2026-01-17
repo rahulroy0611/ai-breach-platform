@@ -79,7 +79,7 @@ def simulate_bas(job_id: str):
     assets = SCAN_RESULTS[job_id]
 
     result = run_bas_simulation(
-        chain_path="attack_chains/external_to_internal.yaml",
+        chain_name="external_to_internal.yaml",
         assets=assets
     )
 

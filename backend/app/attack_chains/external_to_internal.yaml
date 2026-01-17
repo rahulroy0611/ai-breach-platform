@@ -5,23 +5,25 @@ steps:
   - step_id: step_1
     target_asset_type: service
     technique:
+      technique_id: internet_exposure
       name: Internet Exposure
+      description: Publicly reachable service over the internet
       stage: initial_access
       required_conditions:
-        - evidence_type: port_open
-          min_confidence: high
         - evidence_type: http_service_detected
           min_confidence: medium
-      success_effects: []
+      success_effects:
+        - initial_access
 
   - step_id: step_2
     target_asset_type: service
     technique:
+      technique_id: missing_auth
       name: Missing Authentication
+      description: Service lacks authentication controls
       stage: lateral_movement
       required_conditions:
-        - evidence_type: http_service_detected
-          min_confidence: high
         - evidence_type: auth_missing
           min_confidence: medium
-      success_effects: []
+      success_effects:
+        - lateral_access

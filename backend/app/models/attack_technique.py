@@ -1,19 +1,11 @@
-from typing import List, Dict, Optional
+from typing import List
 from pydantic import BaseModel
+from app.models.attack_stage import AttackStage
 
 class AttackTechnique(BaseModel):
     technique_id: str
     name: str
-    stage: str
-
-    # Human explanation (used later for narratives)
+    stage: AttackStage
     description: str
-
-    # Evidence-driven conditions
-    required_conditions: List[Dict]
-
-    # Tags applied on success
-    success_effects: List[str] = []
-
-    # Optional metadata (future-proofing)
-    mitre_technique: Optional[str] = None
+    required_conditions: List[str]
+    success_effects: List[str]
